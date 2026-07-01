@@ -28,7 +28,7 @@ export function createUI() {
           <div class="stat"><span>Type</span><span>${selected.type}</span></div>
           <div class="stat"><span>Health</span><span>${Math.max(0, Math.round(selected.health))}/${selected.maxHealth}</span></div>
           <div class="stat"><span>Damage</span><span>${selected.attackDamage}</span></div>
-          <div class="stat"><span>Range</span><span>${Math.round(selected.attackRange)}</span></div>
+          <div class="stat"><span>Range</span><span>${selected.attackRangeTiles} tile(s)</span></div>
         </div>
       `;
     } else {

@@ -10,18 +10,18 @@ export function updateAI(game, deltaTime) {
   const playerUnits = getUnitsForTeam(game, TEAM_PLAYER);
 
   for (const unit of enemyUnits) {
-    if (!unit.targetId && !unit.moveTarget) {
+    if (!unit.targetId && !unit.moveTargetTile) {
       if (playerUnits.length > 0) {
         const closestPlayer = playerUnits.reduce((best, candidate) => {
-          const bestDistance = Math.hypot(best.x - unit.x, best.y - unit.y);
-          const candidateDistance = Math.hypot(candidate.x - unit.x, candidate.y - unit.y);
+          const bestDistance = Math.hypot(best.tileX - unit.tileX, best.tileY - unit.tileY);
+          const candidateDistance = Math.hypot(candidate.tileX - unit.tileX, candidate.tileY - unit.tileY);
           return candidateDistance < bestDistance ? candidate : best;
         }, playerUnits[0]);
 
         if (Math.random() < 0.45) {
           commandAttack(game, unit.id, closestPlayer.id);
         } else {
-          commandMove(game, unit.id, closestPlayer.x, closestPlayer.y);
+          commandMove(game, unit.id, closestPlayer.tileX, closestPlayer.tileY);
         }
       } else {
         commandAttackBase(game, unit.id, TEAM_ENEMY);

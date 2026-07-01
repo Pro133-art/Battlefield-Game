@@ -39,27 +39,30 @@ export const UNIT_TYPES = {
 
 let nextUnitId = 1;
 
-export function createUnit(type, team, x, y) {
+export function createUnit(type, team, tileX, tileY) {
   const stats = UNIT_TYPES[type];
 
   return {
     id: nextUnitId++,
     type,
     team,
-    x,
-    y,
+    x: 0,
+    y: 0,
+    tileX,
+    tileY,
     vx: 0,
     vy: 0,
     radius: stats.radius,
     maxHealth: stats.maxHealth,
     health: stats.maxHealth,
     speed: stats.speed,
-    attackRange: stats.attackRange,
+    attackRangeTiles: type === "ranger" ? 5 : 1,
     attackDamage: stats.attackDamage,
     attackCooldown: stats.attackCooldown,
     attackTimer: 0,
+    moveTimer: 0,
     targetId: null,
-    moveTarget: null,
+    moveTargetTile: null,
     holdPosition: false,
     dead: false,
   };

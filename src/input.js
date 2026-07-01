@@ -1,4 +1,5 @@
 import { commandAttack, commandAttackBase, commandMove, getSelectedUnit, setSelectedUnit, spawnUnit } from "./game.js";
+import { screenToTile } from "./map.js";
 import { TEAM_PLAYER } from "./units.js";
 
 export function setupInput(canvas, game, ui) {
@@ -45,7 +46,8 @@ export function setupInput(canvas, game, ui) {
       return;
     }
 
-    commandMove(game, selected.id, point.x, point.y);
+    const tile = screenToTile(point.x, point.y);
+    commandMove(game, selected.id, tile.x, tile.y);
     ui.flashMessage("Move order issued.");
   });
 
@@ -105,7 +107,9 @@ function hitTestUnit(game, x, y) {
 }
 
 function isPointInsideBase(x, y, base) {
-  return x >= base.x && x <= base.x + base.width && y >= base.y && y <= base.y + base.height;
+  const centerX = base.x + base.width / 2;
+  const centerY = base.y + base.height / 2;
+  return Math.hypot(centerX - x, centerY - y) <= 34;
 }
 
 function toWorldPoint(canvas, event) {

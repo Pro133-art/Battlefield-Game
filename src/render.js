@@ -1,4 +1,5 @@
-import { TEAM_ENEMY, TEAM_PLAYER, UNIT_TYPES } from "./units.js";
+import { MAP_COLS, MAP_ROWS, TILE_HEIGHT, TILE_WIDTH, tileToScreen } from "./map.js";
+import { TEAM_PLAYER, UNIT_TYPES } from "./units.js";
 
 export function createRenderer(canvas) {
   const context = canvas.getContext("2d");
@@ -24,16 +25,58 @@ function drawBackground(context, width, height) {
 }
 
 function drawTerrain(context, game) {
-  context.save();
-  context.globalAlpha = 0.35;
-  for (let y = 40; y < game.arenaHeight; y += 56) {
-    for (let x = 40; x < game.arenaWidth; x += 72) {
-      context.fillStyle = (x + y) % 2 === 0 ? "#274560" : "#1a3046";
-      context.beginPath();
-      context.arc(x, y, 18 + ((x + y) % 7), 0, Math.PI * 2);
-      context.fill();
+  const splitRow = game.deploymentSplitRow;
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  for (let tileY = 0; tileY < MAP_ROWS; tileY += 1) {
+    for (let tileX = 0; tileX < MAP_COLS; tileX += 1) {
+      const center = tileToScreen(tileX, tileY);
+      minX = Math.min(minX, center.x - TILE_WIDTH / 2);
+      maxX = Math.max(maxX, center.x + TILE_WIDTH / 2);
+      minY = Math.min(minY, center.y - TILE_HEIGHT / 2);
+      maxY = Math.max(maxY, center.y + TILE_HEIGHT / 2);
+
+      let fill = tileY >= splitRow ? "#275f82" : "#7a3434";
+      if ((tileX + tileY) % 2 === 0) {
+        fill = tileY >= splitRow ? "#2f6d95" : "#8a3f3f";
+      }
+
+      if (tileY === splitRow || tileY === splitRow - 1) {
+        fill = "#c39d3d";
+      }
+
+      drawDiamond(context, center.x, center.y, fill, "rgba(8, 10, 14, 0.8)");
     }
   }
+
+  context.save();
+  context.strokeStyle = "#ffe38a";
+  context.lineWidth = 4;
+  const lineStart = tileToScreen(0, splitRow);
+  const lineEnd = tileToScreen(MAP_COLS - 1, splitRow);
+  context.beginPath();
+  context.moveTo(lineStart.x, lineStart.y);
+  context.lineTo(lineEnd.x, lineEnd.y);
+  context.stroke();
+
+  context.fillStyle = "#fff5cf";
+  context.font = "700 14px Inter, sans-serif";
+  context.fillText("DEPLOYMENT LINE", lineStart.x + 14, lineStart.y - 10);
+
+  context.strokeStyle = "rgba(255,255,255,0.85)";
+  context.lineWidth = 2;
+  context.strokeRect(minX - 10, minY - 10, maxX - minX + 20, maxY - minY + 20);
+
+  context.fillStyle = "rgba(12, 20, 34, 0.78)";
+  context.fillRect(minX + 8, maxY - 64, 170, 24);
+  context.fillRect(maxX - 178, minY + 14, 170, 24);
+  context.fillStyle = "#dff0ff";
+  context.font = "600 13px Inter, sans-serif";
+  context.fillText("PLAYER DEPLOYMENT", minX + 14, maxY - 48);
+  context.fillText("AI DEPLOYMENT", maxX - 166, minY + 31);
   context.restore();
 }
 
@@ -46,21 +89,31 @@ function drawBases(context, game) {
 }
 
 function drawBase(context, base, color, label) {
+  const center = tileToScreen(base.tileX, base.tileY);
   context.save();
-  context.fillStyle = "rgba(255,255,255,0.06)";
-  context.fillRect(base.x - 10, base.y - 10, base.width + 20, base.height + 20);
+  context.fillStyle = "rgba(255,255,255,0.08)";
+  context.beginPath();
+  context.arc(center.x, center.y - 10, 28, 0, Math.PI * 2);
+  context.fill();
 
+  context.beginPath();
+  context.fillStyle = color;
+  context.globalAlpha = 0.28;
+  context.moveTo(center.x, center.y - 38);
+  context.lineTo(center.x + 30, center.y - 6);
+  context.lineTo(center.x, center.y + 24);
+  context.lineTo(center.x - 30, center.y - 6);
+  context.closePath();
+  context.fill();
+
+  context.globalAlpha = 1;
   context.strokeStyle = color;
   context.lineWidth = 3;
-  context.strokeRect(base.x, base.y, base.width, base.height);
+  context.stroke();
 
-  context.fillStyle = color;
-  context.globalAlpha = 0.18;
-  context.fillRect(base.x, base.y, base.width, base.height);
-  context.globalAlpha = 1;
   context.fillStyle = "#eef3ff";
   context.font = "700 16px Inter, sans-serif";
-  context.fillText(label, base.x - 2, base.y - 16);
+  context.fillText(label, center.x - 42, center.y - 46);
   context.restore();
 }
 
@@ -93,7 +146,7 @@ function drawUnits(context, game, selectedUnitId) {
 
     context.restore();
 
-    drawHealthBar(context, unit.x - 14, unit.y - unit.radius - 16, 28, unit.health / unit.maxHealth, unit.team === TEAM_PLAYER ? "#69e7b7" : "#ff7272");
+    drawHealthBar(context, unit.x - 14, unit.y - unit.radius - 18, 28, unit.health / unit.maxHealth, unit.team === TEAM_PLAYER ? "#69e7b7" : "#ff7272");
     context.save();
     context.fillStyle = isSelected ? "#ffffff" : "#dbe5ff";
     context.font = "600 12px Inter, sans-serif";
@@ -138,6 +191,22 @@ function drawOverlay(context, game, uiState) {
     context.fillText(game.paused ? "Paused" : game.winner === "player" ? "Victory" : "Defeat", context.canvas.width / 2, context.canvas.height / 2);
     context.restore();
   }
+}
+
+function drawDiamond(context, centerX, centerY, fillStyle, strokeStyle) {
+  context.save();
+  context.beginPath();
+  context.moveTo(centerX, centerY - TILE_HEIGHT / 2);
+  context.lineTo(centerX + TILE_WIDTH / 2, centerY);
+  context.lineTo(centerX, centerY + TILE_HEIGHT / 2);
+  context.lineTo(centerX - TILE_WIDTH / 2, centerY);
+  context.closePath();
+  context.fillStyle = fillStyle;
+  context.fill();
+  context.strokeStyle = strokeStyle;
+  context.lineWidth = 1;
+  context.stroke();
+  context.restore();
 }
 
 function drawHealthBar(context, x, y, width, ratio, color) {

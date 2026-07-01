@@ -1,12 +1,16 @@
-import { createBase, createProjectile, createUnit, clampToArena, TEAM_ENEMY, TEAM_PLAYER, UNIT_TYPES } from "./units.js";
+import { MAP_COLS, MAP_ROWS, getDeploymentSplitRow, isTileInBounds, screenToTile, tileDistance, tileToScreen } from "./map.js";
+import { TEAM_ENEMY, TEAM_PLAYER, UNIT_TYPES, createUnit } from "./units.js";
 
 const ARENA_WIDTH = 1280;
 const ARENA_HEIGHT = 720;
 
 function createInitialState() {
-  return {
+  const game = {
     arenaWidth: ARENA_WIDTH,
     arenaHeight: ARENA_HEIGHT,
+    mapCols: MAP_COLS,
+    mapRows: MAP_ROWS,
+    deploymentSplitRow: getDeploymentSplitRow(),
     time: 0,
     paused: false,
     gameOver: false,
@@ -17,18 +21,17 @@ function createInitialState() {
     enemyIncomeTimer: 0,
     playerSpawnTimer: 0,
     enemySpawnTimer: 0,
-    playerBase: createBase(TEAM_PLAYER, 100, ARENA_HEIGHT / 2 - 46),
-    enemyBase: createBase(TEAM_ENEMY, ARENA_WIDTH - 192, ARENA_HEIGHT / 2 - 46),
-    units: [
-      createUnit("infantry", TEAM_PLAYER, 190, 260),
-      createUnit("ranger", TEAM_PLAYER, 210, 420),
-      createUnit("infantry", TEAM_ENEMY, ARENA_WIDTH - 230, 260),
-      createUnit("ranger", TEAM_ENEMY, ARENA_WIDTH - 250, 420),
-    ],
+    playerBase: createBaseState(TEAM_PLAYER, 24, 22),
+    enemyBase: createBaseState(TEAM_ENEMY, 5, 7),
+    units: [],
     projectiles: [],
     selectedUnitId: null,
     messages: ["Select a blue unit and issue a command."],
   };
+
+  spawnInitialUnits(game);
+  syncScreenPositions(game);
+  return game;
 }
 
 export function createGame() {
@@ -36,8 +39,7 @@ export function createGame() {
 }
 
 export function resetGame(game) {
-  const fresh = createInitialState();
-  Object.assign(game, fresh);
+  Object.assign(game, createInitialState());
   return game;
 }
 
@@ -53,21 +55,25 @@ export function spawnUnit(game, team, type) {
     return false;
   }
 
-  const base = team === TEAM_PLAYER ? game.playerBase : game.enemyBase;
-  const offset = team === TEAM_PLAYER ? 1 : -1;
-  const unit = createUnit(type, team, base.x + base.width / 2 + offset * 62, base.y + base.height / 2);
+  const tile = findSpawnTile(game, team);
+  if (!tile) {
+    return false;
+  }
+
+  const unit = createUnit(type, team, tile.x, tile.y);
+  setUnitScreenPosition(unit);
   game.units.push(unit);
   game[goldKey] -= stats.cost;
   return true;
 }
 
-export function commandMove(game, unitId, x, y) {
+export function commandMove(game, unitId, tileX, tileY) {
   const unit = findUnitById(game, unitId);
-  if (!unit) {
+  if (!unit || !isTileInBounds(tileX, tileY)) {
     return;
   }
 
-  unit.moveTarget = { x, y };
+  unit.moveTargetTile = { x: tileX, y: tileY };
   unit.targetId = null;
 }
 
@@ -78,7 +84,7 @@ export function commandAttack(game, unitId, targetId) {
   }
 
   unit.targetId = targetId;
-  unit.moveTarget = null;
+  unit.moveTargetTile = null;
 }
 
 export function commandAttackBase(game, unitId, team) {
@@ -88,7 +94,7 @@ export function commandAttackBase(game, unitId, team) {
   }
 
   unit.targetId = team === TEAM_PLAYER ? "enemyBase" : "playerBase";
-  unit.moveTarget = null;
+  unit.moveTargetTile = null;
 }
 
 export function setSelectedUnit(game, unitId) {
@@ -115,6 +121,15 @@ export function getTargetById(game, targetId) {
   return findUnitById(game, targetId);
 }
 
+export function getTileAtScreen(game, screenX, screenY) {
+  const tile = screenToTile(screenX, screenY);
+  if (!isTileInBounds(tile.x, tile.y)) {
+    return null;
+  }
+
+  return tile;
+}
+
 export function updateGame(game, deltaTime) {
   if (game.paused || game.gameOver) {
     return;
@@ -124,9 +139,9 @@ export function updateGame(game, deltaTime) {
   tickIncome(game, deltaTime);
   tickAutoSpawns(game, deltaTime);
   updateUnits(game, deltaTime);
-  updateProjectiles(game, deltaTime);
   resolveCombat(game);
   cleanupDeadEntities(game);
+  syncScreenPositions(game);
   resolveVictory(game);
 }
 
@@ -135,14 +150,12 @@ function tickIncome(game, deltaTime) {
   game.enemyIncomeTimer += deltaTime;
 
   if (game.playerIncomeTimer >= 1.5) {
-    const payout = Math.floor(game.playerIncomeTimer / 1.5) * 20;
-    game.playerGold += payout;
+    game.playerGold += Math.floor(game.playerIncomeTimer / 1.5) * 20;
     game.playerIncomeTimer = 0;
   }
 
   if (game.enemyIncomeTimer >= 1.6) {
-    const payout = Math.floor(game.enemyIncomeTimer / 1.6) * 18;
-    game.enemyGold += payout;
+    game.enemyGold += Math.floor(game.enemyIncomeTimer / 1.6) * 18;
     game.enemyIncomeTimer = 0;
   }
 }
@@ -166,147 +179,131 @@ function tickAutoSpawns(game, deltaTime) {
 }
 
 function updateUnits(game, deltaTime) {
+  const occupancy = buildOccupancyMap(game.units);
+
   for (const unit of game.units) {
     unit.attackTimer = Math.max(0, unit.attackTimer - deltaTime);
+    unit.moveTimer += deltaTime;
 
-    if (unit.type !== "ranger") {
+    const stepInterval = unit.speed > 80 ? 0.2 : 0.3;
+    if (unit.moveTimer < stepInterval) {
+      continue;
+    }
+
+    unit.moveTimer = 0;
+
+    if (unit.type === "ranger" && tryRangerShot(game, unit)) {
       continue;
     }
 
     const target = getTargetById(game, unit.targetId);
+    if (target && inAttackRange(unit, target)) {
+      continue;
+    }
+
     if (target) {
-      const targetX = target.x + (target.width ? target.width / 2 : 0);
-      const targetY = target.y + (target.height ? target.height / 2 : 0);
-      const dx = targetX - unit.x;
-      const dy = targetY - unit.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist > unit.attackRange) {
-        unit.x += (dx / dist) * unit.speed * deltaTime;
-        unit.y += (dy / dist) * unit.speed * deltaTime;
-      }
-    } else if (unit.moveTarget) {
-      moveTowardPoint(unit, unit.moveTarget, deltaTime);
-      if (Math.hypot(unit.moveTarget.x - unit.x, unit.moveTarget.y - unit.y) < 10) {
-        unit.moveTarget = null;
-      }
-    } else {
-      const fallbackTarget = unit.team === TEAM_PLAYER ? game.enemyBase : game.playerBase;
-      moveTowardPoint(unit, { x: fallbackTarget.x + fallbackTarget.width / 2, y: fallbackTarget.y + fallbackTarget.height / 2 }, deltaTime);
-    }
-
-    clampToArena(unit, game.arenaWidth, game.arenaHeight);
-  }
-
-  for (const unit of game.units) {
-    if (unit.type === "ranger") {
+      moveOneTileToward(unit, { x: target.tileX, y: target.tileY }, occupancy);
       continue;
     }
 
-    const enemy = findNearestEnemy(game, unit);
-    if (enemy && distance(unit.x, unit.y, enemy.x, enemy.y) <= unit.attackRange) {
-      if (unit.attackTimer <= 0) {
-        enemy.health -= unit.attackDamage;
-        unit.attackTimer = unit.attackCooldown;
+    if (unit.moveTargetTile) {
+      if (unit.tileX === unit.moveTargetTile.x && unit.tileY === unit.moveTargetTile.y) {
+        unit.moveTargetTile = null;
+      } else {
+        moveOneTileToward(unit, unit.moveTargetTile, occupancy);
       }
       continue;
     }
 
-    if (unit.targetId) {
-      const target = getTargetById(game, unit.targetId);
-      if (target) {
-        const targetX = target.x + (target.width ? target.width / 2 : 0);
-        const targetY = target.y + (target.height ? target.height / 2 : 0);
-        moveTowardPoint(unit, { x: targetX, y: targetY }, deltaTime);
-      }
-    } else if (unit.moveTarget) {
-      moveTowardPoint(unit, unit.moveTarget, deltaTime);
-    } else {
-      const fallbackTarget = unit.team === TEAM_PLAYER ? game.enemyBase : game.playerBase;
-      moveTowardPoint(unit, { x: fallbackTarget.x + fallbackTarget.width / 2, y: fallbackTarget.y + fallbackTarget.height / 2 }, deltaTime);
-    }
-
-    clampToArena(unit, game.arenaWidth, game.arenaHeight);
+    const fallback = unit.team === TEAM_PLAYER ? game.enemyBase : game.playerBase;
+    moveOneTileToward(unit, { x: fallback.tileX, y: fallback.tileY }, occupancy);
   }
 }
 
-function moveTowardPoint(unit, point, deltaTime) {
-  const dx = point.x - unit.x;
-  const dy = point.y - unit.y;
-  const dist = Math.hypot(dx, dy);
-  if (dist <= 0.001) {
+function moveOneTileToward(unit, destinationTile, occupancy) {
+  const currentKey = toTileKey(unit.tileX, unit.tileY);
+  occupancy.delete(currentKey);
+
+  const stepX = clampStep(destinationTile.x - unit.tileX);
+  const stepY = clampStep(destinationTile.y - unit.tileY);
+  const options = [
+    { x: unit.tileX + stepX, y: unit.tileY + stepY },
+    { x: unit.tileX + stepX, y: unit.tileY },
+    { x: unit.tileX, y: unit.tileY + stepY },
+    { x: unit.tileX - stepX, y: unit.tileY },
+    { x: unit.tileX, y: unit.tileY - stepY },
+  ];
+
+  for (const option of options) {
+    if (!isTileInBounds(option.x, option.y)) {
+      continue;
+    }
+
+    const key = toTileKey(option.x, option.y);
+    if (occupancy.has(key)) {
+      continue;
+    }
+
+    unit.tileX = option.x;
+    unit.tileY = option.y;
+    occupancy.add(key);
     return;
   }
 
-  const step = Math.min(unit.speed * deltaTime, dist);
-  unit.x += (dx / dist) * step;
-  unit.y += (dy / dist) * step;
+  occupancy.add(currentKey);
 }
 
-function updateProjectiles(game, deltaTime) {
-  for (const projectile of game.projectiles) {
-    const target = getTargetById(game, projectile.targetId);
-    if (!target) {
-      projectile.dead = true;
-      continue;
-    }
-
-    const targetX = target.x + (target.width ? target.width / 2 : 0);
-    const targetY = target.y + (target.height ? target.height / 2 : 0);
-    const dx = targetX - projectile.x;
-    const dy = targetY - projectile.y;
-    const dist = Math.hypot(dx, dy);
-
-    if (dist <= projectile.speed * deltaTime + projectile.radius + (target.radius ?? 0)) {
-      target.health -= projectile.damage;
-      projectile.dead = true;
-      continue;
-    }
-
-    projectile.x += (dx / dist) * projectile.speed * deltaTime;
-    projectile.y += (dy / dist) * projectile.speed * deltaTime;
+function tryRangerShot(game, unit) {
+  if (unit.attackTimer > 0) {
+    return false;
   }
 
-  maybeFireRangedProjectiles(game);
-}
-
-function maybeFireRangedProjectiles(game) {
-  for (const unit of game.units) {
-    if (unit.type !== "ranger" || unit.attackTimer > 0) {
-      continue;
-    }
-
-    const enemy = findNearestEnemy(game, unit);
-    if (!enemy) {
-      continue;
-    }
-
-    const dist = distance(unit.x, unit.y, enemy.x, enemy.y);
-    if (dist > unit.attackRange) {
-      continue;
-    }
-
-    unit.attackTimer = unit.attackCooldown;
-    game.projectiles.push(createProjectile(unit.team, unit.x, unit.y, enemy.id, unit.attackDamage));
+  const enemy = findNearestEnemy(game, unit);
+  if (!enemy) {
+    return false;
   }
+
+  if (tileDistance(unit.tileX, unit.tileY, enemy.tileX, enemy.tileY) > unit.attackRangeTiles) {
+    return false;
+  }
+
+  enemy.health -= unit.attackDamage;
+  unit.attackTimer = unit.attackCooldown;
+  return true;
 }
 
 function resolveCombat(game) {
   for (const unit of game.units) {
-    if (unit.type === "ranger") {
+    if (unit.type === "ranger" || unit.attackTimer > 0) {
       continue;
     }
 
-    const target = getTargetById(game, unit.targetId);
-    if (target && target.team && distance(unit.x, unit.y, target.x, target.y) <= unit.attackRange && unit.attackTimer <= 0) {
-      target.health -= unit.attackDamage;
-      unit.attackTimer = unit.attackCooldown;
+    const target = unit.targetId ? getTargetById(game, unit.targetId) : findNearestEnemy(game, unit);
+    if (!target || !inAttackRange(unit, target)) {
+      continue;
     }
+
+    if (target.team) {
+      target.health -= unit.attackDamage;
+    } else {
+      target.health -= Math.round(unit.attackDamage * 0.8);
+    }
+
+    unit.attackTimer = unit.attackCooldown;
   }
+}
+
+function inAttackRange(unit, target) {
+  if (typeof target.tileX !== "number" || typeof target.tileY !== "number") {
+    return false;
+  }
+
+  const range = target.team ? unit.attackRangeTiles : 1;
+  return tileDistance(unit.tileX, unit.tileY, target.tileX, target.tileY) <= range;
 }
 
 function cleanupDeadEntities(game) {
   game.units = game.units.filter((unit) => unit.health > 0);
-  game.projectiles = game.projectiles.filter((projectile) => !projectile.dead);
 
   if (game.selectedUnitId && !game.units.some((unit) => unit.id === game.selectedUnitId)) {
     game.selectedUnitId = null;
@@ -329,6 +326,95 @@ function resolveVictory(game) {
   game.messages = game.messages.slice(0, 4);
 }
 
+function createBaseState(team, tileX, tileY) {
+  return {
+    team,
+    tileX,
+    tileY,
+    x: 0,
+    y: 0,
+    width: 74,
+    height: 74,
+    maxHealth: 900,
+    health: 900,
+  };
+}
+
+function spawnInitialUnits(game) {
+  game.units.push(createUnit("infantry", TEAM_PLAYER, 23, 20));
+  game.units.push(createUnit("ranger", TEAM_PLAYER, 25, 21));
+  game.units.push(createUnit("infantry", TEAM_ENEMY, 6, 8));
+  game.units.push(createUnit("ranger", TEAM_ENEMY, 4, 9));
+}
+
+function findSpawnTile(game, team) {
+  const base = team === TEAM_PLAYER ? game.playerBase : game.enemyBase;
+  const occupancy = buildOccupancyMap(game.units);
+
+  for (let radius = 1; radius <= 5; radius += 1) {
+    for (let y = -radius; y <= radius; y += 1) {
+      for (let x = -radius; x <= radius; x += 1) {
+        const tileX = base.tileX + x;
+        const tileY = base.tileY + y;
+        if (!isTileInBounds(tileX, tileY)) {
+          continue;
+        }
+
+        if (team === TEAM_PLAYER && tileY < game.deploymentSplitRow) {
+          continue;
+        }
+
+        if (team === TEAM_ENEMY && tileY >= game.deploymentSplitRow) {
+          continue;
+        }
+
+        if (!occupancy.has(toTileKey(tileX, tileY))) {
+          return { x: tileX, y: tileY };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+function syncScreenPositions(game) {
+  for (const unit of game.units) {
+    setUnitScreenPosition(unit);
+  }
+
+  setBaseScreenPosition(game.playerBase);
+  setBaseScreenPosition(game.enemyBase);
+}
+
+function setUnitScreenPosition(unit) {
+  const point = tileToScreen(unit.tileX, unit.tileY);
+  unit.x = point.x;
+  unit.y = point.y;
+}
+
+function setBaseScreenPosition(base) {
+  const point = tileToScreen(base.tileX, base.tileY);
+  base.x = point.x - base.width / 2;
+  base.y = point.y - base.height / 2;
+}
+
+function buildOccupancyMap(units) {
+  const occupancy = new Set();
+  for (const unit of units) {
+    occupancy.add(toTileKey(unit.tileX, unit.tileY));
+  }
+  return occupancy;
+}
+
+function clampStep(value) {
+  if (value === 0) {
+    return 0;
+  }
+
+  return value > 0 ? 1 : -1;
+}
+
 function findNearestEnemy(game, unit) {
   const enemies = game.units.filter((candidate) => candidate.team !== unit.team);
   if (enemies.length === 0) {
@@ -336,10 +422,10 @@ function findNearestEnemy(game, unit) {
   }
 
   let nearest = enemies[0];
-  let nearestDistance = distance(unit.x, unit.y, nearest.x, nearest.y);
+  let nearestDistance = tileDistance(unit.tileX, unit.tileY, nearest.tileX, nearest.tileY);
 
   for (let index = 1; index < enemies.length; index += 1) {
-    const candidateDistance = distance(unit.x, unit.y, enemies[index].x, enemies[index].y);
+    const candidateDistance = tileDistance(unit.tileX, unit.tileY, enemies[index].tileX, enemies[index].tileY);
     if (candidateDistance < nearestDistance) {
       nearest = enemies[index];
       nearestDistance = candidateDistance;
@@ -353,6 +439,6 @@ function findUnitById(game, id) {
   return game.units.find((unit) => unit.id === id) ?? null;
 }
 
-function distance(x1, y1, x2, y2) {
-  return Math.hypot(x2 - x1, y2 - y1);
+function toTileKey(x, y) {
+  return `${x},${y}`;
 }
