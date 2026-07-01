@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Battlefield Game - a browser-based 2D strategy game." />
+    <title>Battlefield Game</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Battlefield Game</p>
+          <h1>Command the blue army, break the red base.</h1>
+        </div>
+        <div class="topbar-actions">
+          <button id="restartButton" type="button">Restart</button>
+          <button id="pauseButton" type="button">Pause</button>
+        </div>
+      </header>
+
+      <main class="game-layout">
+        <section class="canvas-panel">
+          <canvas id="gameCanvas" width="1280" height="720" aria-label="Battlefield game canvas"></canvas>
+          <div id="messageBanner" class="message-banner" aria-live="polite"></div>
+        </section>
+
+        <aside class="hud-panel">
+          <div id="statusPanel" class="card"></div>
+          <div class="card">
+            <h2>Controls</h2>
+            <ul>
+              <li>Click a blue unit to select it.</li>
+              <li>Click the ground to move, or click an enemy to attack.</li>
+              <li>Press <kbd>1</kbd> to spawn an infantry unit.</li>
+              <li>Press <kbd>2</kbd> to spawn a ranger unit.</li>
+              <li>Press <kbd>Space</kbd> to send the selected unit to the enemy base.</li>
+            </ul>
+          </div>
+          <div id="selectionPanel" class="card"></div>
+        </aside>
+      </main>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
