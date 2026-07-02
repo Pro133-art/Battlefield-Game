@@ -43,21 +43,29 @@ function drawTerrain(context, game) {
       minY = Math.min(minY, center.y - TILE_HEIGHT / 2);
       maxY = Math.max(maxY, center.y + TILE_HEIGHT / 2);
 
-      let fill = tileY >= splitRow ? "#275f82" : "#7a3434";
-      if ((tileX + tileY) % 2 === 0) {
-        fill = tileY >= splitRow ? "#2f6d95" : "#8a3f3f";
+      const terrain = getTerrainStyle(tileX, tileY, splitRow);
+      drawDiamond(context, center.x, center.y, terrain.base, "rgba(15, 20, 14, 0.9)");
+
+      if (terrain.scar) {
+        drawScars(context, center.x, center.y, terrain.scar);
       }
 
-      if (tileY === splitRow || tileY === splitRow - 1) {
-        fill = "#c39d3d";
+      if (terrain.mud) {
+        drawMudPatch(context, center.x, center.y, terrain.mud);
       }
 
-      drawDiamond(context, center.x, center.y, fill, "rgba(8, 10, 14, 0.8)");
+      if (terrain.crater) {
+        drawCrater(context, center.x, center.y, terrain.crater);
+      }
+
+      if (terrain.debris) {
+        drawDebris(context, center.x, center.y, terrain.debris);
+      }
     }
   }
 
   context.save();
-  context.strokeStyle = "#ffe38a";
+  context.strokeStyle = "rgba(255, 220, 128, 0.45)";
   context.lineWidth = 4;
   const lineStart = tileToScreen(0, splitRow);
   const lineEnd = tileToScreen(MAP_COLS - 1, splitRow);
@@ -66,21 +74,145 @@ function drawTerrain(context, game) {
   context.lineTo(lineEnd.x, lineEnd.y);
   context.stroke();
 
-  context.fillStyle = "#fff5cf";
+  context.fillStyle = "#f6efc6";
   context.font = "700 14px Inter, sans-serif";
   context.fillText("DEPLOYMENT LINE", lineStart.x + 14, lineStart.y - 10);
 
-  context.strokeStyle = "rgba(255,255,255,0.85)";
+  context.strokeStyle = "rgba(232, 255, 214, 0.32)";
   context.lineWidth = 2;
   context.strokeRect(minX - 10, minY - 10, maxX - minX + 20, maxY - minY + 20);
 
-  context.fillStyle = "rgba(12, 20, 34, 0.78)";
+  context.fillStyle = "rgba(18, 24, 16, 0.78)";
   context.fillRect(minX + 8, maxY - 64, 170, 24);
   context.fillRect(maxX - 178, minY + 14, 170, 24);
-  context.fillStyle = "#dff0ff";
+  context.fillStyle = "#e4f1d7";
   context.font = "600 13px Inter, sans-serif";
   context.fillText("PLAYER DEPLOYMENT", minX + 14, maxY - 48);
   context.fillText("AI DEPLOYMENT", maxX - 166, minY + 31);
+  context.restore();
+}
+
+function getTerrainStyle(tileX, tileY, splitRow) {
+  const baseGreen = tileY >= splitRow ? "#35602f" : "#436838";
+  const altGreen = tileY >= splitRow ? "#4b7436" : "#5b8045";
+  const mudChance = terrainNoise(tileX, tileY, 17);
+  const damageChance = terrainNoise(tileX, tileY, 29);
+  const debrisChance = terrainNoise(tileX, tileY, 43);
+  const scarChance = terrainNoise(tileX, tileY, 59);
+
+  let base = (tileX + tileY) % 2 === 0 ? baseGreen : altGreen;
+  if (tileY === splitRow || tileY === splitRow - 1) {
+    base = "#4f5a24";
+  }
+
+  if (mudChance > 0.68) {
+    base = mixColors(base, "#6c5638", 0.52);
+  }
+
+  const scar = Math.abs(tileY - splitRow) <= 2 && scarChance > 0.38 ? {
+    color: scarChance > 0.7 ? "rgba(26, 22, 16, 0.76)" : "rgba(66, 58, 40, 0.56)",
+    width: 1.2 + terrainNoise(tileX, tileY, 67) * 2.4,
+    length: 5 + terrainNoise(tileX, tileY, 71) * 9,
+    angle: (terrainNoise(tileX, tileY, 83) - 0.5) * 1.4,
+  } : null;
+
+  const mud = mudChance > 0.52 ? {
+    color: mudChance > 0.8 ? "rgba(72, 49, 29, 0.82)" : "rgba(98, 71, 42, 0.7)",
+    scale: 0.72 + (terrainNoise(tileX, tileY, 61) * 0.26),
+    offsetX: (terrainNoise(tileX, tileY, 73) - 0.5) * 4,
+    offsetY: (terrainNoise(tileX, tileY, 79) - 0.5) * 3,
+  } : null;
+
+  const crater = damageChance > 0.77 ? {
+    color: damageChance > 0.88 ? "rgba(28, 24, 18, 0.82)" : "rgba(52, 43, 29, 0.66)",
+    radius: 3.8 + terrainNoise(tileX, tileY, 97) * 5.8,
+  } : null;
+
+  const debris = debrisChance > 0.74 ? {
+    color: debrisChance > 0.86 ? "rgba(201, 173, 126, 0.72)" : "rgba(84, 72, 49, 0.62)",
+    spread: 3 + terrainNoise(tileX, tileY, 113) * 5,
+  } : null;
+
+  return { base, mud, crater, debris, scar };
+}
+
+function terrainNoise(tileX, tileY, salt) {
+  const value = Math.sin((tileX + salt) * 12.9898 + (tileY - salt) * 78.233) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+function mixColors(colorA, colorB, ratio) {
+  const a = hexToRgb(colorA);
+  const b = hexToRgb(colorB);
+  const mix = (start, end) => Math.round(start + (end - start) * ratio);
+  return `rgb(${mix(a.r, b.r)}, ${mix(a.g, b.g)}, ${mix(a.b, b.b)})`;
+}
+
+function hexToRgb(color) {
+  const normalized = color.replace("#", "");
+  return {
+    r: Number.parseInt(normalized.slice(0, 2), 16),
+    g: Number.parseInt(normalized.slice(2, 4), 16),
+    b: Number.parseInt(normalized.slice(4, 6), 16),
+  };
+}
+
+function drawMudPatch(context, centerX, centerY, mud) {
+  context.save();
+  context.translate(centerX + mud.offsetX, centerY + mud.offsetY);
+  context.scale(mud.scale, mud.scale * 0.8);
+  context.fillStyle = mud.color;
+  context.beginPath();
+  context.ellipse(0, 0, 12, 7, terrainNoise(centerX, centerY, 19) * Math.PI, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+}
+
+function drawScars(context, centerX, centerY, scar) {
+  context.save();
+  context.translate(centerX, centerY + 1);
+  context.rotate(scar.angle);
+  context.strokeStyle = scar.color;
+  context.lineWidth = scar.width;
+  context.beginPath();
+  context.moveTo(-scar.length, -1);
+  context.lineTo(scar.length, 1);
+  context.stroke();
+  context.restore();
+}
+
+function drawCrater(context, centerX, centerY, crater) {
+  context.save();
+  context.fillStyle = crater.color;
+  context.beginPath();
+  context.arc(centerX, centerY + 1, crater.radius, 0, Math.PI * 2);
+  context.fill();
+
+  context.strokeStyle = "rgba(15, 12, 8, 0.65)";
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(centerX - crater.radius * 0.7, centerY - crater.radius * 0.2);
+  context.lineTo(centerX + crater.radius * 0.8, centerY + crater.radius * 0.3);
+  context.moveTo(centerX - crater.radius * 0.2, centerY - crater.radius * 0.65);
+  context.lineTo(centerX + crater.radius * 0.15, centerY + crater.radius * 0.72);
+  context.stroke();
+  context.restore();
+}
+
+function drawDebris(context, centerX, centerY, debris) {
+  context.save();
+  context.strokeStyle = debris.color;
+  context.lineWidth = 1.2;
+  context.beginPath();
+  for (let index = 0; index < 3; index += 1) {
+    const angle = terrainNoise(centerX, centerY, 151 + index * 7) * Math.PI * 2;
+    const length = debris.spread + index * 1.4;
+    const startX = centerX + Math.cos(angle) * 2;
+    const startY = centerY + Math.sin(angle) * 1;
+    context.moveTo(startX, startY);
+    context.lineTo(startX + Math.cos(angle + 0.55) * length, startY + Math.sin(angle + 0.55) * length * 0.55);
+  }
+  context.stroke();
   context.restore();
 }
 
