@@ -2,7 +2,7 @@ import { createGame, resetGame, togglePause, updateGame } from "./game.js";
 import { updateAI } from "./ai.js";
 import { setupInput } from "./input.js";
 import { createRenderer } from "./render.js";
-import { createCamera, updateCamera } from "./camera.js";
+import { createCamera, setCameraViewport, updateCamera } from "./camera.js";
 import { createUI } from "./ui.js";
 
 const canvas = document.getElementById("gameCanvas");
@@ -11,6 +11,30 @@ const renderer = createRenderer(canvas);
 const ui = createUI();
 const camera = createCamera(canvas);
 const input = setupInput(canvas, game, ui, camera);
+
+function syncCanvasSize() {
+  const width = Math.max(1, Math.round(canvas.clientWidth));
+  const height = Math.max(1, Math.round(canvas.clientHeight));
+
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+
+  setCameraViewport(camera, canvas.width, canvas.height);
+}
+
+syncCanvasSize();
+
+if (typeof ResizeObserver !== "undefined") {
+  const resizeObserver = new ResizeObserver(() => {
+    syncCanvasSize();
+  });
+
+  resizeObserver.observe(canvas);
+} else {
+  window.addEventListener("resize", syncCanvasSize);
+}
 
 ui.bindControls({
   onRestart: () => {
