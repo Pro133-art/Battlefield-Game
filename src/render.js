@@ -7,7 +7,6 @@ export function createRenderer(canvas) {
   function render(game, uiState) {
     drawBackground(context, canvas.width, canvas.height);
     drawTerrain(context, game);
-    drawGrid(context);
     drawBases(context, game);
     drawUnits(context, game, uiState.selectedUnitId);
     drawProjectiles(context, game);
@@ -78,27 +77,6 @@ function drawTerrain(context, game) {
   context.font = "600 13px Inter, sans-serif";
   context.fillText("PLAYER DEPLOYMENT", minX + 14, maxY - 48);
   context.fillText("AI DEPLOYMENT", maxX - 166, minY + 31);
-  context.restore();
-}
-
-function drawGrid(context) {
-  context.save();
-  context.strokeStyle = "rgba(255,255,255,0.14)";
-  context.lineWidth = 1;
-
-  for (let tileY = 0; tileY < MAP_ROWS; tileY += 1) {
-    for (let tileX = 0; tileX < MAP_COLS; tileX += 1) {
-      const center = tileToScreen(tileX, tileY);
-      context.beginPath();
-      context.moveTo(center.x, center.y - TILE_HEIGHT / 2);
-      context.lineTo(center.x + TILE_WIDTH / 2, center.y);
-      context.lineTo(center.x, center.y + TILE_HEIGHT / 2);
-      context.lineTo(center.x - TILE_WIDTH / 2, center.y);
-      context.closePath();
-      context.stroke();
-    }
-  }
-
   context.restore();
 }
 
