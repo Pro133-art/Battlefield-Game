@@ -2,13 +2,15 @@ import { createGame, resetGame, togglePause, updateGame } from "./game.js";
 import { updateAI } from "./ai.js";
 import { setupInput } from "./input.js";
 import { createRenderer } from "./render.js";
+import { createCamera, updateCamera } from "./camera.js";
 import { createUI } from "./ui.js";
 
 const canvas = document.getElementById("gameCanvas");
 const game = createGame();
 const renderer = createRenderer(canvas);
 const ui = createUI();
-const input = setupInput(canvas, game, ui);
+const camera = createCamera(canvas);
+const input = setupInput(canvas, game, ui, camera);
 
 ui.bindControls({
   onRestart: () => {
@@ -29,12 +31,14 @@ function frame(now) {
   const deltaTime = Math.min(0.033, (now - lastFrame) / 1000);
   lastFrame = now;
 
+  updateCamera(camera, input.getCameraState(), deltaTime);
   updateAI(game, deltaTime);
   updateGame(game, deltaTime);
   ui.update(game, deltaTime);
   renderer.render(game, {
     selectedUnitId: game.selectedUnitId,
     dragState: input.getDragState(),
+    camera,
   });
 
   requestAnimationFrame(frame);

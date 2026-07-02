@@ -1,27 +1,60 @@
 import { commandAttack, commandAttackBase, commandMove, getSelectedUnit, setSelectedUnit, spawnUnit } from "./game.js";
 import { screenToTile } from "./map.js";
 import { TEAM_PLAYER } from "./units.js";
+import { screenToWorldPoint, zoomCamera } from "./camera.js";
 
-export function setupInput(canvas, game, ui) {
+export function setupInput(canvas, game, ui, camera) {
   const pointerState = {
     isDown: false,
     startX: 0,
     startY: 0,
     currentX: 0,
     currentY: 0,
+    worldStartX: 0,
+    worldStartY: 0,
+    worldCurrentX: 0,
+    worldCurrentY: 0,
+    mouseX: 0,
+    mouseY: 0,
+    mouseInsideCanvas: false,
     hasDragged: false,
   };
 
+  const cameraState = {
+    keys: new Set(),
+    mouseX: 0,
+    mouseY: 0,
+    mouseInsideCanvas: false,
+  };
+
+  function updatePointerState(event) {
+    const screenPoint = toCanvasPoint(canvas, event);
+    const worldPoint = screenToWorldPoint(camera, screenPoint.x, screenPoint.y);
+
+    pointerState.mouseX = screenPoint.x;
+    pointerState.mouseY = screenPoint.y;
+    pointerState.mouseInsideCanvas = isPointInsideCanvas(canvas, event.clientX, event.clientY);
+    cameraState.mouseX = screenPoint.x;
+    cameraState.mouseY = screenPoint.y;
+    cameraState.mouseInsideCanvas = pointerState.mouseInsideCanvas;
+
+    return { screenPoint, worldPoint };
+  }
+
   canvas.addEventListener("pointerdown", (event) => {
-    const point = toWorldPoint(canvas, event);
+    const { screenPoint, worldPoint } = updatePointerState(event);
     pointerState.isDown = true;
-    pointerState.startX = point.x;
-    pointerState.startY = point.y;
-    pointerState.currentX = point.x;
-    pointerState.currentY = point.y;
+    pointerState.startX = screenPoint.x;
+    pointerState.startY = screenPoint.y;
+    pointerState.currentX = screenPoint.x;
+    pointerState.currentY = screenPoint.y;
+    pointerState.worldStartX = worldPoint.x;
+    pointerState.worldStartY = worldPoint.y;
+    pointerState.worldCurrentX = worldPoint.x;
+    pointerState.worldCurrentY = worldPoint.y;
     pointerState.hasDragged = false;
 
-    const hitUnit = hitTestUnit(game, point.x, point.y);
+    const hitUnit = hitTestUnit(game, worldPoint.x, worldPoint.y);
     if (hitUnit && hitUnit.team === TEAM_PLAYER) {
       setSelectedUnit(game, hitUnit.id);
       ui.flashMessage(`Selected ${hitUnit.type}.`);
@@ -40,33 +73,53 @@ export function setupInput(canvas, game, ui) {
       return;
     }
 
-    if (isPointInsideBase(point.x, point.y, game.enemyBase)) {
+    if (isPointInsideBase(worldPoint.x, worldPoint.y, game.enemyBase)) {
       commandAttackBase(game, selected.id, TEAM_PLAYER);
       ui.flashMessage("Targeting the enemy base.");
       return;
     }
 
-    const tile = screenToTile(point.x, point.y);
+    const tile = screenToTile(worldPoint.x, worldPoint.y);
     commandMove(game, selected.id, tile.x, tile.y);
     ui.flashMessage("Move order issued.");
   });
 
   canvas.addEventListener("pointermove", (event) => {
+    const { screenPoint, worldPoint } = updatePointerState(event);
+
     if (!pointerState.isDown) {
       return;
     }
 
-    const point = toWorldPoint(canvas, event);
-    pointerState.currentX = point.x;
-    pointerState.currentY = point.y;
-    pointerState.hasDragged = Math.hypot(point.x - pointerState.startX, point.y - pointerState.startY) > 12;
+    pointerState.currentX = screenPoint.x;
+    pointerState.currentY = screenPoint.y;
+    pointerState.worldCurrentX = worldPoint.x;
+    pointerState.worldCurrentY = worldPoint.y;
+    pointerState.hasDragged = Math.hypot(screenPoint.x - pointerState.startX, screenPoint.y - pointerState.startY) > 12;
   });
 
   canvas.addEventListener("pointerup", () => {
     pointerState.isDown = false;
   });
 
+  canvas.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    zoomCamera(camera, event.deltaY);
+  }, { passive: false });
+
+  window.addEventListener("mousemove", (event) => {
+    const { screenPoint } = updatePointerState(event);
+    cameraState.mouseX = screenPoint.x;
+    cameraState.mouseY = screenPoint.y;
+    cameraState.mouseInsideCanvas = pointerState.mouseInsideCanvas;
+  });
+
   window.addEventListener("keydown", (event) => {
+    if (isCameraKey(event.code)) {
+      event.preventDefault();
+      cameraState.keys.add(event.code);
+    }
+
     if (event.code === "Digit1") {
       const success = spawnUnit(game, TEAM_PLAYER, "infantry");
       ui.flashMessage(success ? "Spawned infantry." : "Not enough gold for infantry.");
@@ -87,9 +140,17 @@ export function setupInput(canvas, game, ui) {
     }
   });
 
+  window.addEventListener("keyup", (event) => {
+    cameraState.keys.delete(event.code);
+  });
+
   return {
     getDragState() {
       return pointerState;
+    },
+
+    getCameraState() {
+      return cameraState;
     },
   };
 }
@@ -112,7 +173,7 @@ function isPointInsideBase(x, y, base) {
   return Math.hypot(centerX - x, centerY - y) <= 34;
 }
 
-function toWorldPoint(canvas, event) {
+function toCanvasPoint(canvas, event) {
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
@@ -121,4 +182,13 @@ function toWorldPoint(canvas, event) {
     x: (event.clientX - rect.left) * scaleX,
     y: (event.clientY - rect.top) * scaleY,
   };
+}
+
+function isPointInsideCanvas(canvas, clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+}
+
+function isCameraKey(code) {
+  return code === "KeyW" || code === "KeyA" || code === "KeyS" || code === "KeyD" || code === "ArrowUp" || code === "ArrowLeft" || code === "ArrowDown" || code === "ArrowRight";
 }

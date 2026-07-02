@@ -1,15 +1,19 @@
 import { MAP_COLS, MAP_ROWS, TILE_HEIGHT, TILE_WIDTH, tileToScreen } from "./map.js";
 import { TEAM_PLAYER, UNIT_TYPES } from "./units.js";
+import { applyCameraTransform } from "./camera.js";
 
 export function createRenderer(canvas) {
   const context = canvas.getContext("2d");
 
   function render(game, uiState) {
     drawBackground(context, canvas.width, canvas.height);
+    context.save();
+    applyCameraTransform(context, uiState.camera);
     drawTerrain(context, game);
     drawBases(context, game);
     drawUnits(context, game, uiState.selectedUnitId);
     drawProjectiles(context, game);
+    context.restore();
     drawOverlay(context, game, uiState);
   }
 
