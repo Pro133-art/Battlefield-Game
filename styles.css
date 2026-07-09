@@ -3,6 +3,7 @@
   --bg: #0f160d;
   --panel: rgba(18, 24, 14, 0.9);
   --panel-strong: rgba(24, 32, 18, 0.97);
+  --panel-tint: rgba(159, 203, 99, 0.12);
   --line: rgba(152, 186, 102, 0.26);
   --text: #f0f4df;
   --muted: #c8d2b6;
@@ -42,11 +43,24 @@ body {
 }
 
 .topbar {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px 24px;
   align-items: center;
   margin-bottom: 20px;
+  padding: 20px 22px;
+  border: 1px solid rgba(159, 203, 99, 0.18);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(24, 32, 18, 0.96), rgba(12, 18, 10, 0.94)),
+    radial-gradient(circle at top left, rgba(159, 203, 99, 0.12), transparent 34%);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+}
+
+.topbar-copy {
+  display: grid;
+  gap: 4px;
 }
 
 .eyebrow {
@@ -72,12 +86,13 @@ h1 {
 
 .topbar-actions {
   display: flex;
+  justify-content: flex-end;
   gap: 12px;
 }
 
 button {
   border: 1px solid var(--line);
-  background: linear-gradient(180deg, rgba(159, 203, 99, 0.24), rgba(84, 100, 45, 0.2));
+  background: linear-gradient(180deg, rgba(159, 203, 99, 0.16), rgba(84, 100, 45, 0.18));
   color: var(--text);
   padding: 12px 16px;
   border-radius: 14px;
@@ -88,6 +103,180 @@ button {
 
 button:hover {
   border-color: rgba(159, 203, 99, 0.58);
+}
+
+.utility-button {
+  min-width: 112px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.utility-button--pause {
+  background: linear-gradient(180deg, rgba(255, 210, 126, 0.18), rgba(122, 92, 40, 0.24));
+}
+
+.command-strip {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.deploy-button {
+  position: relative;
+  min-height: 78px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  overflow: hidden;
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(159, 203, 99, 0.28);
+  background:
+    linear-gradient(180deg, rgba(14, 20, 12, 0.96), rgba(24, 31, 20, 0.94)),
+    radial-gradient(circle at top left, rgba(159, 203, 99, 0.08), transparent 26%);
+  text-align: left;
+}
+
+.deploy-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 0%, rgba(255, 255, 255, 0.04) 50%, transparent 100%);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.deploy-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(159, 203, 99, 0.58);
+}
+
+.deploy-button__icon {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.24), transparent 38%),
+    linear-gradient(180deg, rgba(124, 149, 66, 0.95), rgba(52, 72, 32, 0.95));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.deploy-button__icon span {
+  position: relative;
+  z-index: 1;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #eff5db;
+}
+
+.deploy-button__body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.deploy-button__label {
+  font-size: 0.96rem;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deploy-button__meta {
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.84;
+}
+
+.deploy-button__cooldown {
+  position: absolute;
+  inset: auto 0 0;
+  height: 100%;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.deploy-button__cooldown-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--cooldown-fill, 0) * 100%);
+  background: linear-gradient(180deg, rgba(159, 203, 99, 0.08), rgba(159, 203, 99, 0.34));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.deploy-button__cooldown-text {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(240, 244, 223, 0.92);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.deploy-button[data-locked="true"] {
+  border-color: rgba(255, 215, 130, 0.18);
+  opacity: 0.86;
+}
+
+.deploy-button[data-locked="true"] .deploy-button__cooldown-fill {
+  background: linear-gradient(180deg, rgba(255, 215, 130, 0.06), rgba(255, 215, 130, 0.24));
+}
+
+.deploy-button[data-cooldown-active="true"] {
+  border-color: rgba(159, 203, 99, 0.7);
+}
+
+.deploy-button[data-cooldown-active="true"] .deploy-button__cooldown-text {
+  color: #eaf9c7;
+}
+
+.deploy-button--riflemen .deploy-button__icon {
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.26), transparent 38%),
+    linear-gradient(180deg, rgba(122, 168, 78, 0.95), rgba(56, 82, 33, 0.95));
+}
+
+.deploy-button--troopers .deploy-button__icon {
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.26), transparent 38%),
+    linear-gradient(180deg, rgba(163, 138, 70, 0.95), rgba(84, 68, 29, 0.95));
+}
+
+.deploy-button--medics .deploy-button__icon {
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.26), transparent 38%),
+    linear-gradient(180deg, rgba(89, 149, 109, 0.95), rgba(36, 80, 51, 0.95));
+}
+
+.deploy-button--commandos .deploy-button__icon {
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.26), transparent 38%),
+    linear-gradient(180deg, rgba(95, 162, 194, 0.95), rgba(35, 68, 92, 0.95));
+}
+
+.deploy-button--tanks .deploy-button__icon {
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.26), transparent 38%),
+    linear-gradient(180deg, rgba(150, 112, 71, 0.95), rgba(77, 50, 28, 0.95));
 }
 
 .game-layout {
@@ -192,6 +381,18 @@ kbd {
 }
 
 @media (max-width: 1080px) {
+  .topbar {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar-actions {
+    justify-content: flex-start;
+  }
+
+  .command-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .game-layout {
     grid-template-columns: 1fr;
   }
@@ -206,17 +407,17 @@ kbd {
     padding: 14px;
   }
 
-  .topbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .topbar-actions {
     justify-content: stretch;
+    flex-wrap: wrap;
   }
 
   .topbar-actions button {
     flex: 1;
+  }
+
+  .command-strip {
+    grid-template-columns: 1fr;
   }
 
   .hud-panel {

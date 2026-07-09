@@ -10,14 +10,77 @@
   <body>
     <div class="shell">
       <header class="topbar">
-        <div>
-          <p class="eyebrow">Battlefield Game</p>
-          <h1>Command the blue army, break the red base.</h1>
+        <div class="topbar-copy">
+          <p class="eyebrow">Battlefield Command</p>
+          <h1>Deploy your line from the command deck.</h1>
         </div>
+
         <div class="topbar-actions">
-          <button id="restartButton" type="button">Restart</button>
-          <button id="pauseButton" type="button">Pause</button>
+          <button id="restartButton" class="utility-button" type="button">Restart</button>
+          <button id="pauseButton" class="utility-button utility-button--pause" type="button">Pause</button>
         </div>
+
+        <nav class="command-strip" aria-label="Deployment deck">
+          <button class="deploy-button deploy-button--riflemen" type="button" data-deploy-key="riflemen" data-cooldown-seconds="7">
+            <span class="deploy-button__icon" aria-hidden="true"><span>R</span></span>
+            <span class="deploy-button__body">
+              <span class="deploy-button__label">Riflemen</span>
+              <span class="deploy-button__meta">Infantry line</span>
+            </span>
+            <span class="deploy-button__cooldown" aria-hidden="true">
+              <span class="deploy-button__cooldown-fill"></span>
+              <span class="deploy-button__cooldown-text">READY</span>
+            </span>
+          </button>
+
+          <button class="deploy-button deploy-button--troopers" type="button" data-deploy-key="troopers" data-cooldown-seconds="9">
+            <span class="deploy-button__icon" aria-hidden="true"><span>BT</span></span>
+            <span class="deploy-button__body">
+              <span class="deploy-button__label">Battlefield Troopers</span>
+              <span class="deploy-button__meta">Heavy push</span>
+            </span>
+            <span class="deploy-button__cooldown" aria-hidden="true">
+              <span class="deploy-button__cooldown-fill"></span>
+              <span class="deploy-button__cooldown-text">READY</span>
+            </span>
+          </button>
+
+          <button class="deploy-button deploy-button--medics deploy-button--locked" type="button" data-deploy-key="medics" data-cooldown-seconds="11" data-locked="true">
+            <span class="deploy-button__icon" aria-hidden="true"><span>M</span></span>
+            <span class="deploy-button__body">
+              <span class="deploy-button__label">Medics</span>
+              <span class="deploy-button__meta">Support squad</span>
+            </span>
+            <span class="deploy-button__cooldown" aria-hidden="true">
+              <span class="deploy-button__cooldown-fill"></span>
+              <span class="deploy-button__cooldown-text">LOCKED</span>
+            </span>
+          </button>
+
+          <button class="deploy-button deploy-button--commandos" type="button" data-deploy-key="commandos" data-cooldown-seconds="10">
+            <span class="deploy-button__icon" aria-hidden="true"><span>C</span></span>
+            <span class="deploy-button__body">
+              <span class="deploy-button__label">Commandos</span>
+              <span class="deploy-button__meta">Skirmish team</span>
+            </span>
+            <span class="deploy-button__cooldown" aria-hidden="true">
+              <span class="deploy-button__cooldown-fill"></span>
+              <span class="deploy-button__cooldown-text">READY</span>
+            </span>
+          </button>
+
+          <button class="deploy-button deploy-button--tanks deploy-button--locked" type="button" data-deploy-key="tanks" data-cooldown-seconds="16" data-locked="true">
+            <span class="deploy-button__icon" aria-hidden="true"><span>T</span></span>
+            <span class="deploy-button__body">
+              <span class="deploy-button__label">Tanks</span>
+              <span class="deploy-button__meta">Armored spearhead</span>
+            </span>
+            <span class="deploy-button__cooldown" aria-hidden="true">
+              <span class="deploy-button__cooldown-fill"></span>
+              <span class="deploy-button__cooldown-text">LOCKED</span>
+            </span>
+          </button>
+        </nav>
       </header>
 
       <main class="game-layout">
@@ -31,6 +94,7 @@
           <div class="card">
             <h2>Controls</h2>
             <ul>
+              <li>Use the command deck across the top to deploy units.</li>
               <li>Click a blue unit to select it.</li>
               <li>Click the ground to move, or click an enemy to attack.</li>
               <li>Hold <kbd>W</kbd>, <kbd>A</kbd>, <kbd>S</kbd>, <kbd>D</kbd> or move the mouse to the edge of the battlefield to pan.</li>
