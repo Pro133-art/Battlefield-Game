@@ -55,6 +55,7 @@ export function spawnUnit(game, team, type) {
     return false;
   }
 
+  
   const tile = findSpawnTile(game, team);
   if (!tile) {
     return false;
@@ -66,6 +67,38 @@ export function spawnUnit(game, team, type) {
   game[goldKey] -= stats.cost;
   return true;
 }
+
+export function isTileInDeploymentZone(game, team, tileX, tileY) {
+  if (!isTileInBounds(tileX, tileY)) {
+    return false;
+  }
+  return team === TEAM_PLAYER ? tileY >= game.deploymentSplitRow : tileY < game.deploymentSplitRow;
+}
+
+export function spawnUnitAt(game, team, type, tileX, tileY) {
+  const stats = UNIT_TYPES[type];
+  const goldKey = team === TEAM_PLAYER ? "playerGold" : "enemyGold";
+
+  if (game[goldKey] < stats.cost) {
+    return { success: false, reason: "gold" };
+  }
+
+  if (!isTileInDeploymentZone(game, team, tileX, tileY)) {
+    return { success: false, reason: "zone" };
+  }
+
+  const occupancy = buildOccupancyMap(game.units);
+  if (occupancy.has(toTileKey(tileX, tileY))) {
+    return { success: false, reason: "occupied" };
+  }
+
+  const unit = createUnit(type, team, tileX, tileY);
+  setUnitScreenPosition(unit);
+  game.units.push(unit);
+  game[goldKey] -= stats.cost;
+  return { success: true };
+}
+
 
 export function commandMove(game, unitId, tileX, tileY) {
   const unit = findUnitById(game, unitId);
