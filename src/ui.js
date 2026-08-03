@@ -94,10 +94,20 @@ export function createUI() {
       flashMessage(result.message);
     }
 
-    if (result?.success) {
+    if (result?.success && !result?.selectionOnly) {
       entry.readyAt = currentTime + entry.cooldownSeconds;
       updateDeploymentDeck();
     }
+  }
+
+  function markDeploymentReady(deployKey) {
+    const entry = deploymentButtons.find((candidate) => candidate.key === deployKey);
+    if (!entry) {
+      return;
+    }
+
+    entry.readyAt = currentTime + entry.cooldownSeconds;
+    updateDeploymentDeck();
   }
 
   function cleanupDrag(entry) {
@@ -223,6 +233,7 @@ export function createUI() {
     update,
     flashMessage,
     bindControls,
+    markDeploymentReady,
     setPausedLabel(paused) {
       pauseButton.textContent = paused ? "Resume" : "Pause";
     },

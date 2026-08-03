@@ -2,10 +2,10 @@ import { createGame, resetGame, spawnUnit, togglePause, updateGame } from "./gam
 import { updateAI } from "./ai.js";
 import { setupInput } from "./input.js";
 import { createRenderer } from "./render.js";
-import { createCamera, setCameraViewport, updateCamera } from "./camera.js";
+import { createCamera, setCameraViewport, screenToWorldPoint, updateCamera } from "./camera.js";
 import { createUI } from "./ui.js";
 import { TEAM_PLAYER } from "./units.js";
-import { screenToTile } from "./map.js";
+import { isTileInBounds, screenToTile } from "./map.js";
 import { spawnUnitAt } from "./game.js";
 
 const canvas = document.getElementById("gameCanvas");
@@ -17,26 +17,31 @@ const input = setupInput(canvas, game, ui, camera);
 
 const deploymentMap = {
   riflemen: {
+    label: "Riflemen",
     unitType: "infantry",
     successMessage: "Riflemen deployed.",
     failureMessage: "Not enough gold for riflemen.",
   },
   troopers: {
+    label: "Battlefield Troopers",
     unitType: "brute",
     successMessage: "Battlefield Troopers deployed.",
     failureMessage: "Not enough gold for Battlefield Troopers.",
   },
   commandos: {
+    label: "Commandos",
     unitType: "ranger",
     successMessage: "Commandos deployed.",
     failureMessage: "Not enough gold for commandos.",
   },
   medics: {
+    label: "Medics",
     unitType: "medic",
     successMessage: "Medics deployed.",
     failureMessage: "Not enough gold for medics.",
   },
   tanks: {
+    label: "Tanks",
     unitType: "tank",
     successMessage: "Tanks deployed.",
     failureMessage: "Not enough gold for tanks.",
@@ -85,6 +90,10 @@ ui.bindControls({
     }
 
     const success = spawnUnit(game, TEAM_PLAYER, deployment.unitType);
+    if (success) {
+      ui.markDeploymentReady(deployKey);
+    }
+
     return {
       success,
       message: success ? deployment.successMessage : deployment.failureMessage,
@@ -104,15 +113,18 @@ ui.bindControls({
       return { success: false, message: "Drop the unit onto the battlefield." };
     }
 
-    const worldX = camera.x + (relativeX * canvas.width / rect.width - canvas.width / 2) / camera.zoom;
-    const worldY = camera.y + (relativeY * canvas.height / rect.height - canvas.height / 2) / camera.zoom;
-    const tile = screenToTile(worldX, worldY);
+    const worldPoint = screenToWorldPoint(camera, relativeX * canvas.width / rect.width, relativeY * canvas.height / rect.height);
+    const tile = screenToTile(worldPoint.x, worldPoint.y);
 
-    if (!tile) {
+    if (!tile || !isTileInBounds(tile.x, tile.y)) {
       return { success: false, message: "Drop the unit onto the battlefield." };
     }
 
     const gameResult = spawnUnitAt(game, TEAM_PLAYER, deployment.unitType, tile.x, tile.y);
+    if (gameResult?.success) {
+      ui.markDeploymentReady(deployKey);
+    }
+
     return {
       success: gameResult?.success ?? false,
       message: gameResult?.success

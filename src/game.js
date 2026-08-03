@@ -26,6 +26,7 @@ function createInitialState() {
     units: [],
     projectiles: [],
     selectedUnitId: null,
+    pendingDeployment: null,
     messages: ["Select a blue unit and issue a command."],
   };
 
