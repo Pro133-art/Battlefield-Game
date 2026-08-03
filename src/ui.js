@@ -18,6 +18,11 @@ export function createUI() {
   let flashTimer = 0;
   let currentTime = 0;
 
+  const dragPreview = document.createElement("div");
+  dragPreview.className = "deploy-drag-preview";
+  dragPreview.setAttribute("aria-hidden", "true");
+  document.body.appendChild(dragPreview);
+
   function updateDeploymentDeck() {
     for (const entry of deploymentButtons) {
       const remaining = Math.max(0, entry.readyAt - currentTime);
@@ -84,12 +89,119 @@ export function createUI() {
     flashTimer = 2.4;
   }
 
-  function bindControls({ onRestart, onPause, onDeploy }) {
+  function applyDeploymentResult(entry, result) {
+    if (result?.message) {
+      flashMessage(result.message);
+    }
+
+    if (result?.success) {
+      entry.readyAt = currentTime + entry.cooldownSeconds;
+      updateDeploymentDeck();
+    }
+  }
+
+  function cleanupDrag(entry) {
+    if (!entry.dragState) {
+      return;
+    }
+
+    if (entry.dragState.moveHandler) {
+      document.removeEventListener("pointermove", entry.dragState.moveHandler);
+    }
+
+    if (entry.dragState.upHandler) {
+      document.removeEventListener("pointerup", entry.dragState.upHandler);
+    }
+
+    entry.button.classList.remove("is-dragging");
+    entry.button.dataset.dragging = "false";
+    dragPreview.classList.remove("is-visible");
+    entry.dragState.active = false;
+    entry.dragState.dragging = false;
+    entry.dragState.moveHandler = null;
+    entry.dragState.upHandler = null;
+  }
+
+  function beginDeploymentDrag(entry, event, onDropDeploy) {
+    if (entry.locked) {
+      flashMessage(`${entry.label} are not deployed yet.`);
+      return;
+    }
+
+    const remaining = Math.max(0, entry.readyAt - currentTime);
+    if (remaining > 0) {
+      flashMessage(`${entry.label} ready in ${remaining.toFixed(1)}s.`);
+      return;
+    }
+
+    entry.dragState = {
+      active: true,
+      dragging: false,
+      startX: event.clientX,
+      startY: event.clientY,
+      moveHandler: null,
+      upHandler: null,
+    };
+
+    entry.button.dataset.dragging = "true";
+    entry.button.classList.add("is-dragging");
+    dragPreview.classList.add("is-visible");
+    dragPreview.textContent = entry.label;
+    dragPreview.style.left = `${event.clientX}px`;
+    dragPreview.style.top = `${event.clientY}px`;
+
+    const handlePointerMove = (moveEvent) => {
+      if (!entry.dragState?.active) {
+        return;
+      }
+
+      dragPreview.style.left = `${moveEvent.clientX}px`;
+      dragPreview.style.top = `${moveEvent.clientY}px`;
+
+      const distance = Math.hypot(moveEvent.clientX - entry.dragState.startX, moveEvent.clientY - entry.dragState.startY);
+      if (!entry.dragState.dragging && distance > 8) {
+        entry.dragState.dragging = true;
+      }
+    };
+
+    const handlePointerUp = (upEvent) => {
+      if (!entry.dragState?.active) {
+        return;
+      }
+
+      if (entry.dragState.dragging) {
+        entry.suppressNextClick = true;
+        const result = onDropDeploy?.(entry.key, upEvent.clientX, upEvent.clientY) ?? null;
+        applyDeploymentResult(entry, result);
+      }
+
+      cleanupDrag(entry);
+    };
+
+    entry.dragState.moveHandler = handlePointerMove;
+    entry.dragState.upHandler = handlePointerUp;
+    document.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("pointerup", handlePointerUp);
+  }
+
+  function bindControls({ onRestart, onPause, onDeploy, onDropDeploy }) {
     restartButton.addEventListener("click", onRestart);
     pauseButton.addEventListener("click", onPause);
 
     for (const entry of deploymentButtons) {
-      entry.button.addEventListener("click", () => {
+      entry.button.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        beginDeploymentDrag(entry, event, onDropDeploy);
+      });
+
+      entry.button.addEventListener("click", (event) => {
+        if (entry.suppressNextClick) {
+          entry.suppressNextClick = false;
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+
         if (entry.locked) {
           flashMessage(`${entry.label} are not deployed yet.`);
           return;
@@ -102,14 +214,7 @@ export function createUI() {
         }
 
         const result = onDeploy?.(entry.key) ?? null;
-        if (result?.message) {
-          flashMessage(result.message);
-        }
-
-        if (result?.success) {
-          entry.readyAt = currentTime + entry.cooldownSeconds;
-          updateDeploymentDeck();
-        }
+        applyDeploymentResult(entry, result);
       });
     }
   }

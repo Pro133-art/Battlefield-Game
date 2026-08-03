@@ -157,6 +157,12 @@ button:hover {
   border-color: rgba(159, 203, 99, 0.58);
 }
 
+.deploy-button.is-dragging {
+  opacity: 0.8;
+  transform: scale(0.98);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
 .deploy-button__icon {
   position: relative;
   width: 46px;
@@ -247,6 +253,29 @@ button:hover {
 
 .deploy-button[data-cooldown-active="true"] .deploy-button__cooldown-text {
   color: #eaf9c7;
+}
+
+.deploy-drag-preview {
+  position: fixed;
+  z-index: 40;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(159, 203, 99, 0.62);
+  background: rgba(18, 24, 14, 0.96);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.96);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.deploy-drag-preview.is-visible {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
 }
 
 .deploy-button--riflemen .deploy-button__icon {

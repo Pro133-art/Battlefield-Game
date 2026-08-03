@@ -5,6 +5,8 @@ import { createRenderer } from "./render.js";
 import { createCamera, setCameraViewport, updateCamera } from "./camera.js";
 import { createUI } from "./ui.js";
 import { TEAM_PLAYER } from "./units.js";
+import { screenToTile } from "./map.js";
+import { spawnUnitAt } from "./game.js";
 
 const canvas = document.getElementById("gameCanvas");
 const game = createGame();
@@ -76,6 +78,40 @@ ui.bindControls({
     return {
       success,
       message: success ? deployment.successMessage : deployment.failureMessage,
+    };
+  },
+  onDropDeploy: (deployKey, clientX, clientY) => {
+    const deployment = deploymentMap[deployKey];
+    if (!deployment) {
+      return { success: false, message: "That deployment is not available yet." };
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const relativeX = clientX - rect.left;
+    const relativeY = clientY - rect.top;
+
+    if (relativeX < 0 || relativeY < 0 || relativeX > rect.width || relativeY > rect.height) {
+      return { success: false, message: "Drop the unit onto the battlefield." };
+    }
+
+    const worldX = camera.x + (relativeX * canvas.width / rect.width - canvas.width / 2) / camera.zoom;
+    const worldY = camera.y + (relativeY * canvas.height / rect.height - canvas.height / 2) / camera.zoom;
+    const tile = screenToTile(worldX, worldY);
+
+    if (!tile) {
+      return { success: false, message: "Drop the unit onto the battlefield." };
+    }
+
+    const gameResult = spawnUnitAt(game, TEAM_PLAYER, deployment.unitType, tile.x, tile.y);
+    return {
+      success: gameResult?.success ?? false,
+      message: gameResult?.success
+        ? deployment.successMessage
+        : gameResult?.reason === "zone"
+          ? "Units can only deploy in your side of the battlefield."
+          : gameResult?.reason === "occupied"
+            ? "That tile is already occupied."
+            : deployment.failureMessage,
     };
   },
 });
