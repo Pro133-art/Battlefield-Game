@@ -29,8 +29,8 @@ export function updateAI(game, deltaTime) {
     }
   }
 
-  if (game.enemyGold >= 50 && Math.random() < deltaTime * 0.9) {
-    const choice = game.enemyGold >= 75 && Math.random() > 0.5 ? "ranger" : "infantry";
+  if (Math.random() < deltaTime * 0.9) {
+    const choice = Math.random() > 0.5 ? "ranger" : "infantry";
     spawnUnit(game, TEAM_ENEMY, choice);
   }
 }

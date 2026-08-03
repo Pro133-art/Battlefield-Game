@@ -122,12 +122,12 @@ export function setupInput(canvas, game, ui, camera) {
 
     if (event.code === "Digit1") {
       const success = spawnUnit(game, TEAM_PLAYER, "infantry");
-      ui.flashMessage(success ? "Spawned infantry." : "Not enough gold for infantry.");
+      ui.flashMessage(success ? "Spawned infantry." : "Unable to spawn infantry.");
     }
 
     if (event.code === "Digit2") {
       const success = spawnUnit(game, TEAM_PLAYER, "ranger");
-      ui.flashMessage(success ? "Spawned ranger." : "Not enough gold for ranger.");
+      ui.flashMessage(success ? "Spawned ranger." : "Unable to spawn ranger.");
     }
 
     if (event.code === "Space") {

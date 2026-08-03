@@ -21,31 +21,26 @@ const deploymentMap = {
     label: "Riflemen",
     unitType: "infantry",
     successMessage: "Riflemen deployed.",
-    failureMessage: "Not enough gold for riflemen.",
   },
   troopers: {
     label: "Battlefield Troopers",
     unitType: "brute",
     successMessage: "Battlefield Troopers deployed.",
-    failureMessage: "Not enough gold for Battlefield Troopers.",
   },
   commandos: {
     label: "Commandos",
     unitType: "ranger",
     successMessage: "Commandos deployed.",
-    failureMessage: "Not enough gold for commandos.",
   },
   medics: {
     label: "Medics",
     unitType: "medic",
     successMessage: "Medics deployed.",
-    failureMessage: "Not enough gold for medics.",
   },
   tanks: {
     label: "Tanks",
     unitType: "tank",
     successMessage: "Tanks deployed.",
-    failureMessage: "Not enough gold for tanks.",
   },
 };
 
@@ -98,7 +93,7 @@ ui.bindControls({
 
     return {
       success,
-      message: success ? deployment.successMessage : deployment.failureMessage,
+      message: success ? deployment.successMessage : "Unable to deploy that unit.",
     };
   },
   onDropDeploy: (deployKey, clientX, clientY) => {
@@ -136,7 +131,7 @@ ui.bindControls({
           ? "Units can only deploy in your side of the battlefield."
           : gameResult?.reason === "occupied"
             ? "That tile is already occupied."
-            : deployment.failureMessage,
+            : "Unable to deploy that unit.",
     };
   },
 });

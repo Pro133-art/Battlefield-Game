@@ -56,8 +56,6 @@ export function createUI() {
     statusPanel.innerHTML = `
       <h2>Status</h2>
       <div class="stat-grid">
-        <div class="stat"><span>Blue gold</span><span class="value-good">${game.playerGold}</span></div>
-        <div class="stat"><span>Red gold</span><span class="value-danger">${game.enemyGold}</span></div>
         <div class="stat"><span>Blue units</span><span>${game.units.filter((unit) => unit.team === "player").length}</span></div>
         <div class="stat"><span>Red units</span><span>${game.units.filter((unit) => unit.team === "enemy").length}</span></div>
       </div>

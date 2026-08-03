@@ -15,10 +15,6 @@ function createInitialState() {
     paused: false,
     gameOver: false,
     winner: null,
-    playerGold: 100,
-    enemyGold: 100,
-    playerIncomeTimer: 0,
-    enemyIncomeTimer: 0,
     playerSpawnTimer: 0,
     enemySpawnTimer: 0,
     playerBase: createBaseState(TEAM_PLAYER, 24, 22),
@@ -51,13 +47,6 @@ export function togglePause(game) {
 
 export function spawnUnit(game, team, type) {
   // Spawn a unit at the nearest valid tile near the selected base.
-  const stats = UNIT_TYPES[type];
-  const goldKey = team === TEAM_PLAYER ? "playerGold" : "enemyGold";
-  if (game[goldKey] < stats.cost) {
-    return false;
-  }
-
-  
   const tile = findSpawnTile(game, team);
   if (!tile) {
     return false;
@@ -66,7 +55,6 @@ export function spawnUnit(game, team, type) {
   const unit = createUnit(type, team, tile.x, tile.y);
   setUnitScreenPosition(unit);
   game.units.push(unit);
-  game[goldKey] -= stats.cost;
   return true;
 }
 
@@ -80,13 +68,6 @@ export function isTileInDeploymentZone(game, team, tileX, tileY) {
 
 export function spawnUnitAt(game, team, type, tileX, tileY) {
   // Place a unit at an explicit tile after a drag-and-drop deployment.
-  const stats = UNIT_TYPES[type];
-  const goldKey = team === TEAM_PLAYER ? "playerGold" : "enemyGold";
-
-  if (game[goldKey] < stats.cost) {
-    return { success: false, reason: "gold" };
-  }
-
   if (!isTileInDeploymentZone(game, team, tileX, tileY)) {
     return { success: false, reason: "zone" };
   }
@@ -99,7 +80,6 @@ export function spawnUnitAt(game, team, type, tileX, tileY) {
   const unit = createUnit(type, team, tileX, tileY);
   setUnitScreenPosition(unit);
   game.units.push(unit);
-  game[goldKey] -= stats.cost;
   return { success: true };
 }
 
@@ -183,18 +163,7 @@ export function updateGame(game, deltaTime) {
 }
 
 function tickIncome(game, deltaTime) {
-  game.playerIncomeTimer += deltaTime;
-  game.enemyIncomeTimer += deltaTime;
-
-  if (game.playerIncomeTimer >= 1.5) {
-    game.playerGold += Math.floor(game.playerIncomeTimer / 1.5) * 20;
-    game.playerIncomeTimer = 0;
-  }
-
-  if (game.enemyIncomeTimer >= 1.6) {
-    game.enemyGold += Math.floor(game.enemyIncomeTimer / 1.6) * 18;
-    game.enemyIncomeTimer = 0;
-  }
+  void deltaTime;
 }
 
 function tickAutoSpawns(game, deltaTime) {
@@ -202,14 +171,12 @@ function tickAutoSpawns(game, deltaTime) {
   game.enemySpawnTimer += deltaTime;
 
   if (game.playerSpawnTimer >= 7) {
-    if (game.playerGold >= UNIT_TYPES.infantry.cost) {
-      spawnUnit(game, TEAM_PLAYER, "infantry");
-    }
+    spawnUnit(game, TEAM_PLAYER, "infantry");
     game.playerSpawnTimer = 0;
   }
 
   if (game.enemySpawnTimer >= 4.5) {
-    const type = game.enemyGold >= UNIT_TYPES.ranger.cost && Math.random() > 0.5 ? "ranger" : "infantry";
+    const type = Math.random() > 0.5 ? "ranger" : "infantry";
     spawnUnit(game, TEAM_ENEMY, type);
     game.enemySpawnTimer = 0;
   }
