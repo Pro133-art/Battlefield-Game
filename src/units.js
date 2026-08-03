@@ -35,6 +35,28 @@ export const UNIT_TYPES = {
     radius: 12,
     color: "#ff8b8b",
   },
+  medic: {
+    label: "Medic",
+    maxHealth: 90,
+    speed: 82,
+    attackRange: 18,
+    attackDamage: 14,
+    attackCooldown: 0.8,
+    cost: 70,
+    radius: 9,
+    color: "#7ee3b4",
+  },
+  tank: {
+    label: "Tank",
+    maxHealth: 260,
+    speed: 46,
+    attackRange: 18,
+    attackDamage: 36,
+    attackCooldown: 1.4,
+    cost: 120,
+    radius: 14,
+    color: "#c6a07b",
+  },
 };
 
 let nextUnitId = 1;

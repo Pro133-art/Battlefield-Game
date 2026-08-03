@@ -31,6 +31,16 @@ const deploymentMap = {
     successMessage: "Commandos deployed.",
     failureMessage: "Not enough gold for commandos.",
   },
+  medics: {
+    unitType: "medic",
+    successMessage: "Medics deployed.",
+    failureMessage: "Not enough gold for medics.",
+  },
+  tanks: {
+    unitType: "tank",
+    successMessage: "Tanks deployed.",
+    failureMessage: "Not enough gold for tanks.",
+  },
 };
 
 function syncCanvasSize() {
