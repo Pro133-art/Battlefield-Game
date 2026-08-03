@@ -50,6 +50,7 @@ export function togglePause(game) {
 }
 
 export function spawnUnit(game, team, type) {
+  // Spawn a unit at the nearest valid tile near the selected base.
   const stats = UNIT_TYPES[type];
   const goldKey = team === TEAM_PLAYER ? "playerGold" : "enemyGold";
   if (game[goldKey] < stats.cost) {
@@ -70,6 +71,7 @@ export function spawnUnit(game, team, type) {
 }
 
 export function isTileInDeploymentZone(game, team, tileX, tileY) {
+  // The deployment line splits the map so each side can only spawn on its own half.
   if (!isTileInBounds(tileX, tileY)) {
     return false;
   }
@@ -77,6 +79,7 @@ export function isTileInDeploymentZone(game, team, tileX, tileY) {
 }
 
 export function spawnUnitAt(game, team, type, tileX, tileY) {
+  // Place a unit at an explicit tile after a drag-and-drop deployment.
   const stats = UNIT_TYPES[type];
   const goldKey = team === TEAM_PLAYER ? "playerGold" : "enemyGold";
 
@@ -382,6 +385,7 @@ function spawnInitialUnits(game) {
 }
 
 function findSpawnTile(game, team) {
+  // Search outward from the base for a free tile that matches the team deployment zone.
   const base = team === TEAM_PLAYER ? game.playerBase : game.enemyBase;
   const occupancy = buildOccupancyMap(game.units);
 

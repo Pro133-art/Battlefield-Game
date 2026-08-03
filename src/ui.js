@@ -18,12 +18,14 @@ export function createUI() {
   let flashTimer = 0;
   let currentTime = 0;
 
+  // Preview element shown while a deployment card is being dragged.
   const dragPreview = document.createElement("div");
   dragPreview.className = "deploy-drag-preview";
   dragPreview.setAttribute("aria-hidden", "true");
   document.body.appendChild(dragPreview);
 
   function updateDeploymentDeck() {
+    // Refresh the visual state of each deploy button, including cooldowns and lock status.
     for (const entry of deploymentButtons) {
       const remaining = Math.max(0, entry.readyAt - currentTime);
       const onCooldown = !entry.locked && remaining > 0;
@@ -111,6 +113,7 @@ export function createUI() {
   }
 
   function cleanupDrag(entry) {
+    // Tear down the pointer listeners and reset the drag preview after a drop or cancel.
     if (!entry.dragState) {
       return;
     }
@@ -133,6 +136,7 @@ export function createUI() {
   }
 
   function beginDeploymentDrag(entry, event, onDropDeploy) {
+    // Start tracking a drag for a deployment button and show the preview widget.
     if (entry.locked) {
       flashMessage(`${entry.label} are not deployed yet.`);
       return;
@@ -161,6 +165,7 @@ export function createUI() {
     dragPreview.style.top = `${event.clientY}px`;
 
     const handlePointerMove = (moveEvent) => {
+      // Keep the drag preview following the pointer and mark the gesture as a true drag.
       if (!entry.dragState?.active) {
         return;
       }
@@ -175,6 +180,7 @@ export function createUI() {
     };
 
     const handlePointerUp = (upEvent) => {
+      // Release the drag and hand the final drop position to the game logic.
       if (!entry.dragState?.active) {
         return;
       }
@@ -195,16 +201,19 @@ export function createUI() {
   }
 
   function bindControls({ onRestart, onPause, onDeploy, onDropDeploy }) {
+    // Wire the top-bar buttons and deployment cards to the game actions.
     restartButton.addEventListener("click", onRestart);
     pauseButton.addEventListener("click", onPause);
 
     for (const entry of deploymentButtons) {
       entry.button.addEventListener("pointerdown", (event) => {
+        // Start a deployment drag instead of a normal click when the pointer moves.
         event.preventDefault();
         beginDeploymentDrag(entry, event, onDropDeploy);
       });
 
       entry.button.addEventListener("click", (event) => {
+        // Prevent a click from firing after a successful drag-and-drop gesture.
         if (entry.suppressNextClick) {
           entry.suppressNextClick = false;
           event.preventDefault();

@@ -15,6 +15,7 @@ const ui = createUI();
 const camera = createCamera(canvas);
 const input = setupInput(canvas, game, ui, camera);
 
+// Maps each deployment button to the unit type and feedback text it should spawn.
 const deploymentMap = {
   riflemen: {
     label: "Riflemen",
@@ -84,6 +85,7 @@ ui.bindControls({
     ui.flashMessage(paused ? "Game paused." : "Game resumed.");
   },
   onDeploy: (deployKey) => {
+    // Fast deploy from the button itself, using the default spawn position.
     const deployment = deploymentMap[deployKey];
     if (!deployment) {
       return { success: false, message: "That deployment is not available yet." };
@@ -100,6 +102,7 @@ ui.bindControls({
     };
   },
   onDropDeploy: (deployKey, clientX, clientY) => {
+    // Convert the pointer drop position into a world point and then a map tile.
     const deployment = deploymentMap[deployKey];
     if (!deployment) {
       return { success: false, message: "That deployment is not available yet." };
