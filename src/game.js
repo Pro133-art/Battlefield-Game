@@ -52,6 +52,12 @@ export function spawnUnit(game, team, type) {
     return false;
   }
 
+  // Validate unit type exists to avoid creating undefined stats.
+  if (!UNIT_TYPES[type]) {
+    console.error(`spawnUnit: unknown unit type "${type}"`);
+    return false;
+  }
+
   const unit = createUnit(type, team, tile.x, tile.y);
   setUnitScreenPosition(unit);
   game.units.push(unit);
@@ -70,6 +76,12 @@ export function spawnUnitAt(game, team, type, tileX, tileY) {
   // Place a unit at an explicit tile after a drag-and-drop deployment.
   if (!isTileInDeploymentZone(game, team, tileX, tileY)) {
     return { success: false, reason: "zone" };
+  }
+
+  // Validate unit type before attempting to create it.
+  if (!UNIT_TYPES[type]) {
+    console.error(`spawnUnitAt: unknown unit type "${type}"`);
+    return { success: false, reason: "invalid_type" };
   }
 
   const occupancy = buildOccupancyMap(game.units);

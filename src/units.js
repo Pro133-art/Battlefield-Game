@@ -58,6 +58,9 @@ let nextUnitId = 1;
 
 export function createUnit(type, team, tileX, tileY) {
   const stats = UNIT_TYPES[type];
+  if (!stats) {
+    throw new Error(`createUnit: unknown unit type "${type}"`);
+  }
 
   return {
     id: nextUnitId++,
